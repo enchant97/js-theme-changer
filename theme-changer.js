@@ -16,6 +16,14 @@ class ThemeChanger {
      */
     static theme_picker_id = "theme-picker-selector";
     /**
+     * the parent element to insert theme picker
+     */
+    static theme_picker_parent = null;
+    /**
+     * Used to show the current theme that is selected
+     */
+    static selected_theme_css_class = "current";
+    /**
      * the theme keys
      */
     static theme_keys = {
@@ -87,6 +95,7 @@ class ThemeChanger {
             return;
         }
         ThemeChanger.load_theme_properties();
+        ThemeChanger.remove_theme_picker();
     }
     /**
      * you can use this method when
@@ -95,5 +104,64 @@ class ThemeChanger {
     static on_load() {
         ThemeChanger.get_stored_theme_choice();
         ThemeChanger.load_theme_properties();
+    }
+    /**
+     *
+     * @param {ThemeChanger.theme_keys} theme_key - the theme key
+     * @param {boolean} use_local - whether to store in local storage
+     * @param {boolean} allow_reload - whether to allow page reloading
+     * @returns {Element} the created button element
+     */
+    static create_theme_picker_button(theme_key, use_local, allow_reload) {
+        const bnt_text = ThemeChanger.theme_meta[theme_key][0];
+        const element = document.createElement('button');
+        element.addEventListener('click', _event => {
+            ThemeChanger.change_theme(theme_key, use_local, allow_reload);
+        });
+        element.innerText = bnt_text;
+        if (ThemeChanger.curr_theme === theme_key) {
+            element.classList.add(ThemeChanger.selected_theme_css_class);
+        }
+        return element;
+    }
+    /**
+     * insert a new theme picker
+     * @param {boolean} use_local - whether to store in local storage
+     * @param {boolean} allow_reload - whether to allow page reloading
+     */
+    static insert_theme_picker(use_local, allow_reload) {
+        const picker_element = document.createElement("div");
+        picker_element.setAttribute("id", ThemeChanger.theme_picker_id);
+        for (let key in ThemeChanger.theme_keys) {
+            picker_element.appendChild(
+                ThemeChanger.create_theme_picker_button(
+                    ThemeChanger.theme_keys[key], use_local, allow_reload)
+            );
+        }
+        if (ThemeChanger.theme_picker_parent === null) {
+            ThemeChanger.theme_picker_parent = document.body;
+        }
+        ThemeChanger.theme_picker_parent.insertAdjacentElement("afterbegin", picker_element);
+    }
+    /**
+     * remove a theme picker if there is one on screen
+     */
+    static remove_theme_picker() {
+        const picker_element = document.getElementById(ThemeChanger.theme_picker_id);
+        picker_element?.remove();
+    }
+    /**
+     * create or remove the theme picker
+     * @param {boolean} use_local - whether to store in local storage
+     * @param {boolean} allow_reload - whether to allow page reloading
+     */
+    static toggle_theme_picker(use_local = false, allow_reload = true) {
+        const picker_element = document.getElementById(ThemeChanger.theme_picker_id);
+        if (picker_element === null) {
+            ThemeChanger.insert_theme_picker(use_local, allow_reload);
+        }
+        else {
+            ThemeChanger.remove_theme_picker();
+        }
     }
 }
