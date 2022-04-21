@@ -24,99 +24,106 @@ class ThemeChanger {
      */
     static selected_theme_css_class = "current";
     /**
-     * the theme keys
+     * the themes that can be selected
      */
-    static theme_keys = {
-        OS: "os",
-        LIGHT: "light",
-        DARK: "dark",
+    static themes = {
+        os: {
+            name: "OS",
+            css: null,
+        },
+        light: {
+            name: "Light",
+            css: [],
+        },
+        dark: {
+            name: "Dark",
+            css: [],
+        },
     };
     /**
-     * Each theme { key: [ user title, theme-properties[ name, value ] ] }
-     *
-     * The OS theme is a special theme that
-     * will get the theme from the browser
-     * (if "prefers-color-scheme" has been used in css)
+     * the os controlled theme
      */
-    static theme_meta = {
-        "os": ["OS", []],
-        "light": ["Light", []],
-        "dark": ["Dark", []],
-    };
+    static os_theme = "os";
     /**
-     * current theme that has been selected
+     * current theme key that has been selected
      */
-    static curr_theme = ThemeChanger.theme_keys.OS;
+    static curr_theme;
     /**
-     * load the stored theme from local/session storage
-     * (if one was ever stored)
-     *
-     * @returns the current theme
+     * get the selectable theme keys
+     * @returns the theme key as a array
      */
-    static get_stored_theme_choice() {
-        var new_theme = window.localStorage.getItem(ThemeChanger.saved_theme_key);
-        if (new_theme === null) {
-            new_theme = window.sessionStorage.getItem(ThemeChanger.saved_theme_key);
+    static use_local = false;
+    static allow_reload = true;
+    static get_theme_keys() {
+        return Object.keys(ThemeChanger.themes);
+    }
+    /**
+     * get an item from localStorage, sessionStorage,
+     * falling back on default if none are found
+     * @param {string} key - the key to get
+     * @param {object} default_value - the default value
+     * @returns
+     */
+    static get_item_from_storage(key, default_value) {
+        return window.localStorage.getItem(key) || window.sessionStorage.getItem(key) || default_value;
+    }
+    /**
+     * set an item from localStorage or sessionStorage
+     * @param {string} key - the key to set
+     * @param {object} value - the value to set
+     */
+    static set_item_to_storage(key, value) {
+        if (ThemeChanger.use_local) {
+            window.localStorage.setItem(key, value);
+            window.sessionStorage.removeItem(key);
         }
-        if (new_theme === null) {
-            new_theme = ThemeChanger.theme_keys.OS;
+        else {
+            window.sessionStorage.setItem(key, value);
+            window.localStorage.removeItem(key);
         }
-        ThemeChanger.curr_theme = new_theme;
-        return new_theme;
     }
     /**
      * load the current pages theme css properties
      */
-    static load_theme_properties() {
-        const theme_properties = ThemeChanger.theme_meta[ThemeChanger.curr_theme][1];
-        theme_properties.forEach(key_value => {
-            document.documentElement.style.setProperty(key_value[0], key_value[1]);
+    static set_current_theme_css() {
+        const theme_properties = ThemeChanger.themes[ThemeChanger.curr_theme].css;
+        theme_properties?.forEach(key_value => {
+            document.documentElement.style.setProperty(...key_value);
         });
     }
     /**
-     *
-     * @param {ThemeChanger.theme_keys} theme_key - the new theme to load
-     * @param {boolean} use_local - whether to store in local storage
-     * @param {boolean} allow_reload - whether to allow page reloading
+     * Change the current page theme
+     * @param {string} theme_key - the new theme to load
      */
-    static change_theme(theme_key, use_local = false, allow_reload = true) {
-        if (use_local) {
-            window.localStorage.setItem(ThemeChanger.saved_theme_key, theme_key);
-            window.sessionStorage.removeItem(ThemeChanger.saved_theme_key);
-        }
-        else {
-            window.sessionStorage.setItem(ThemeChanger.saved_theme_key, theme_key);
-            window.localStorage.removeItem(ThemeChanger.saved_theme_key);
-        }
-        ThemeChanger.get_stored_theme_choice();
-        if (theme_key === ThemeChanger.theme_keys.OS && allow_reload) {
+    static change_current_theme(theme_key) {
+        ThemeChanger.set_item_to_storage(ThemeChanger.saved_theme_key, theme_key);
+        ThemeChanger.curr_theme = theme_key;
+        if (theme_key === ThemeChanger.os_theme && ThemeChanger.allow_reload) {
             // required so that user will not have any themes
             window.location.reload();
             return;
         }
-        ThemeChanger.load_theme_properties();
-        ThemeChanger.remove_theme_picker();
+        ThemeChanger.set_current_theme_css();
     }
     /**
-     * you can use this method when
-     * loading the theme during page load
+     * call this method on load to
+     * get current theme and apply it
      */
     static on_load() {
-        ThemeChanger.get_stored_theme_choice();
-        ThemeChanger.load_theme_properties();
+        ThemeChanger.curr_theme = ThemeChanger.get_item_from_storage(ThemeChanger.saved_theme_key, ThemeChanger.os_theme);
+        ThemeChanger.set_current_theme_css();
     }
     /**
-     *
-     * @param {ThemeChanger.theme_keys} theme_key - the theme key
-     * @param {boolean} use_local - whether to store in local storage
-     * @param {boolean} allow_reload - whether to allow page reloading
+     * Create a theme picker button ready for appending
+     * @param {string} theme_key - the theme key
      * @returns {Element} the created button element
      */
-    static create_theme_picker_button(theme_key, use_local, allow_reload) {
-        const bnt_text = ThemeChanger.theme_meta[theme_key][0];
+    static create_theme_picker_button(theme_key) {
+        const bnt_text = ThemeChanger.themes[theme_key].name;
         const element = document.createElement('button');
         element.addEventListener('click', _event => {
-            ThemeChanger.change_theme(theme_key, use_local, allow_reload);
+            ThemeChanger.remove_theme_picker();
+            ThemeChanger.change_current_theme(theme_key);
         });
         element.innerText = bnt_text;
         if (ThemeChanger.curr_theme === theme_key) {
@@ -126,17 +133,12 @@ class ThemeChanger {
     }
     /**
      * insert a new theme picker
-     * @param {boolean} use_local - whether to store in local storage
-     * @param {boolean} allow_reload - whether to allow page reloading
      */
-    static insert_theme_picker(use_local, allow_reload) {
+    static insert_theme_picker() {
         const picker_element = document.createElement("div");
         picker_element.setAttribute("id", ThemeChanger.theme_picker_id);
-        for (let key in ThemeChanger.theme_keys) {
-            picker_element.appendChild(
-                ThemeChanger.create_theme_picker_button(
-                    ThemeChanger.theme_keys[key], use_local, allow_reload)
-            );
+        for (let key of ThemeChanger.get_theme_keys()) {
+            picker_element.appendChild(ThemeChanger.create_theme_picker_button(key));
         }
         if (ThemeChanger.theme_picker_parent === null) {
             ThemeChanger.theme_picker_parent = document.body;
@@ -152,13 +154,11 @@ class ThemeChanger {
     }
     /**
      * create or remove the theme picker
-     * @param {boolean} use_local - whether to store in local storage
-     * @param {boolean} allow_reload - whether to allow page reloading
      */
-    static toggle_theme_picker(use_local = false, allow_reload = true) {
+    static toggle_theme_picker() {
         const picker_element = document.getElementById(ThemeChanger.theme_picker_id);
         if (picker_element === null) {
-            ThemeChanger.insert_theme_picker(use_local, allow_reload);
+            ThemeChanger.insert_theme_picker();
         }
         else {
             ThemeChanger.remove_theme_picker();
