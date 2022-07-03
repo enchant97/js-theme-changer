@@ -23,22 +23,14 @@ class ThemeChanger {
      * Used to show the current theme that is selected
      */
     static selected_theme_css_class = "current";
+    static dataset_theme_name = "theme";
     /**
      * the themes that can be selected
      */
     static themes = {
-        os: {
-            name: "OS",
-            css: null,
-        },
-        light: {
-            name: "Light",
-            css: [],
-        },
-        dark: {
-            name: "Dark",
-            css: [],
-        },
+        os: "OS",
+        light: "Light",
+        dark: "Dark",
     };
     /**
      * the os controlled theme
@@ -53,7 +45,6 @@ class ThemeChanger {
      * @returns the theme key as a array
      */
     static use_local = false;
-    static allow_reload = true;
     static get_theme_keys() {
         return Object.keys(ThemeChanger.themes);
     }
@@ -83,13 +74,10 @@ class ThemeChanger {
         }
     }
     /**
-     * load the current pages theme css properties
+     * add the theme dataset value
      */
-    static set_current_theme_css() {
-        const theme_properties = ThemeChanger.themes[ThemeChanger.curr_theme].css;
-        theme_properties?.forEach(key_value => {
-            document.documentElement.style.setProperty(...key_value);
-        });
+    static set_current_theme() {
+        document.documentElement.dataset[ThemeChanger.dataset_theme_name] = ThemeChanger.curr_theme;
     }
     /**
      * Change the current page theme
@@ -98,12 +86,7 @@ class ThemeChanger {
     static change_current_theme(theme_key) {
         ThemeChanger.set_item_to_storage(ThemeChanger.saved_theme_key, theme_key);
         ThemeChanger.curr_theme = theme_key;
-        if (theme_key === ThemeChanger.os_theme && ThemeChanger.allow_reload) {
-            // required so that user will not have any themes
-            window.location.reload();
-            return;
-        }
-        ThemeChanger.set_current_theme_css();
+        ThemeChanger.set_current_theme();
     }
     /**
      * call this method on load to
@@ -111,7 +94,7 @@ class ThemeChanger {
      */
     static on_load() {
         ThemeChanger.curr_theme = ThemeChanger.get_item_from_storage(ThemeChanger.saved_theme_key, ThemeChanger.os_theme);
-        ThemeChanger.set_current_theme_css();
+        ThemeChanger.set_current_theme();
     }
     /**
      * Create a theme picker button ready for appending
@@ -119,7 +102,7 @@ class ThemeChanger {
      * @returns {Element} the created button element
      */
     static create_theme_picker_button(theme_key) {
-        const bnt_text = ThemeChanger.themes[theme_key].name;
+        const bnt_text = ThemeChanger.themes[theme_key];
         const element = document.createElement('button');
         element.addEventListener('click', _event => {
             ThemeChanger.remove_theme_picker();
@@ -135,7 +118,8 @@ class ThemeChanger {
      * insert a new theme picker
      */
     static insert_theme_picker() {
-        const picker_element = document.createElement("div");
+        const picker_element = document.createElement("dialog");
+        picker_element.setAttribute("open", true);
         picker_element.setAttribute("id", ThemeChanger.theme_picker_id);
         for (let key of ThemeChanger.get_theme_keys()) {
             picker_element.appendChild(ThemeChanger.create_theme_picker_button(key));
